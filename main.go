@@ -40,22 +40,19 @@ func printTable(res []searchResult, s search) {
 }
 
 
-func main() {
-    
-    feed, _ := fetchFeed()
-    fmt.Println(feed.Title)
-    
+/** Iterate through the feed and apply the desired search term
+ * 
+ */
+func searchFeed(feed *gofeed.Feed, search search) []searchResult{
     results := []searchResult{}
-    var search search
-    search.term = "foo"
     
     for _, item := range feed.Items{
         // fmt.Println(item.Title)
         // fmt.Println(item.Link)
         //fmt.Println(item.Description)
-        for _, cat := range item.Categories{
-            fmt.Println(cat)
-        }
+        //for _, cat := range item.Categories{
+        //    fmt.Println(cat)
+        //}
         
         var res searchResult
         res.id = 1 // TODO
@@ -63,6 +60,18 @@ func main() {
         res.language = "N/A"
         results = append(results, res)
     }
+    return results
+}
+
+func main() {
+    
+    feed, _ := fetchFeed()
+    fmt.Println(feed.Title)
+    
+    var search search
+    search.term = "foo"
+
+    results := searchFeed(feed, search)
     
     // Render the results
     printTable(results, search)
