@@ -10,9 +10,9 @@ import (
     "strings"
     
     "github.com/jedib0t/go-pretty/v6/table"
-    "github.com/k3a/html2text"
     "github.com/mmcdole/gofeed"
     "golang.org/x/net/html"
+    md "github.com/JohannesKaufmann/html-to-markdown"
 )
 
 type searchResult struct{
@@ -41,7 +41,8 @@ func fetchFeed() (feed *gofeed.Feed, err error){
 func printSnippet(id int, title string, link string){
     // Fetch the page
     fmt.Println(link)
-    resp, err := http.Get(link)
+    //resp, err := http.Get(link)
+    resp, err := http.Get("https://recipebook.bentasker.co.uk/posts/pork/bbq-pork-loin.html")
     if err != nil {
         log.Fatal(err)
     }
@@ -59,42 +60,38 @@ func printSnippet(id int, title string, link string){
     
     
     // Define the map that we'll write content into
-    entries := make(map[string]*html.Node)
+    entry := make(map[string]*html.Node)
     
     // Iterate through to select the items we need
-    var f func(*html.Node, map[string]string)
-    f = func(n *html.Node, elems map[string]string){
-                
-        
-        // TODO Only check attributes of divs
-        if n.Type == html.ElementNode && n.Data == "h4" {
+    var f func(*html.Node)
+    f = func(n *html.Node){
+        // Check whether it's a div
+        if n.Type == html.ElementNode && n.Data == "div" {
             attrs := n.Attr
             for _, attr := range attrs {
-                    if attr.Key == "id" {
-                        // See if it's in the list of desired IDs
-                        _, desired := elems[attr.Val]
-                        if desired {
-                            entries[attr.Val] = n
+                    // TODO: match on ID rather than class
+                    if attr.Key == "class" {
+                        if strings.Contains(attr.Val, "post-page"){
+                            entry["body"] = n
                         }
                     }
                 }
         }
     
-        // Recurse through
+        // Recurse through children
         for c := n.FirstChild; c != nil; c = c.NextSibling {
-            f(c, elems)
+            f(c)
         }
     }    
-
-    // Map HTML IDs to output titles
-    desiredElements := make(map[string]string)
-    desiredElements["conclusion"] = "Conclusion"
         
-    f(doc, desiredElements)
-    _, ok := entries["conclusion"]; if ok {
+    f(doc)
+    _, ok := entry["body"]; if ok {
         var h bytes.Buffer
-        html.Render(&h, entries["conclusion"])
-        fmt.Println(html2text.HTML2Text(h.String()))
+        html.Render(&h, entry["body"])
+        converter := md.NewConverter("", true, nil)
+        markdown, _ := converter.ConvertString(h.String())
+        fmt.Println(markdown)
+        
     }
 
 }
