@@ -3,6 +3,7 @@ package main
 import (
     "fmt"
     "os"
+    "strconv"
     "strings"
     
     "github.com/jedib0t/go-pretty/v6/table"
@@ -46,13 +47,20 @@ func printTable(res []searchResult, s search) {
  * 
  */
 func searchFeed(feed *gofeed.Feed, search search) []searchResult{
+    var idMatchMode bool
+    var searchID int
+    var err error
     results := []searchResult{}
-    
     searchTerm := strings.ToLower(search.term)
-    
     // IDs decrement as we iterate through, so get the number
     // of items
     id := feed.Len()
+    
+    // Have we been passed something that's simply a number?
+    if searchID, err = strconv.Atoi(searchTerm); err == nil {
+        // We have, switch to ID match mode
+        idMatchMode = true
+    }
     
     for _, item := range feed.Items{
         // fmt.Println(item.Title)
@@ -68,25 +76,32 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
         res.title = item.Title
         res.language = "N/A" // TODO
 
-        // Does the title match?
-        if strings.Contains(strings.ToLower(item.Title), searchTerm) {
-            res.matchtype = "title"
-            matched = true
-        }
-        
-        // What about keywords?
-        for _, cat := range item.Categories{
-            if strings.Contains(strings.ToLower(cat), searchTerm){
-                res.matchtype = "keyword"
-                matched = true             
-                break;
+        if !idMatchMode {
+            // Does the title match?
+            if strings.Contains(strings.ToLower(item.Title), searchTerm) {
+                res.matchtype = "title"
+                matched = true
             }
-        }               
-        
-        if matched {
-            results = append(results, res)            
+            
+            // What about keywords?
+            for _, cat := range item.Categories{
+                if strings.Contains(strings.ToLower(cat), searchTerm){
+                    res.matchtype = "keyword"
+                    matched = true
+                    break;
+                }
+            }
+            
+            if matched {
+                results = append(results, res)
+            }
+        }else{
+            if id == searchID {
+                // TODO - print the snippet
+                fmt.Println("%i matches", id)
+            }
         }
-        
+    
         id -= 1
     }
     return results
@@ -98,7 +113,7 @@ func main() {
     fmt.Println(feed.Title)
     
     var search search
-    search.term = "blog"
+    search.term = "10"
 
     results := searchFeed(feed, search)
     
