@@ -28,6 +28,9 @@ type search struct{
     term    string
 }
 
+/** Fetch and parse the RSS feed
+ * 
+ */
 func fetchFeed() (feed *gofeed.Feed, err error){
     // TODO: caching
     fp := gofeed.NewParser()
@@ -35,14 +38,12 @@ func fetchFeed() (feed *gofeed.Feed, err error){
     return fp.ParseURL("https://www.bentasker.co.uk/rss.xml")
 }
 
-
 /** Fetch a snippet and process it into something which can be
  * output to console
  * 
  */
 func printSnippet(id int, title string, link string){
     // Fetch the page
-    fmt.Println(link)
     //resp, err := http.Get(link)
     resp, err := http.Get("https://snippets.bentasker.co.uk/page-2409261238-List-Resource-Requests-and-Limits-for-Kubernetes-pods-Misc.html")
     if err != nil {
@@ -60,8 +61,9 @@ func printSnippet(id int, title string, link string){
         log.Fatal(err)
     }
     
-    
     // Define the map that we'll write content into
+    // we use a map because I may later want to extract
+    // some additional info
     entry := make(map[string]*html.Node)
     
     // Iterate through to select the items we need
@@ -85,11 +87,24 @@ func printSnippet(id int, title string, link string){
             f(c)
         }
     }    
-        
+    
+    // Trigger iteration
     f(doc)
     
-    // We don't want link targets to be included - we're looking to try and 
-    // make something for a user to read in a CLI
+    // Render
+    _, ok := entry["body"]; if ok {
+        renderSnippet(entry["body"], id, title)
+    }else{
+        log.Fatal("Unable to retrieve snippet")
+    }
+}    
+ 
+/** Generate console output for a snippet
+ * 
+ */
+func renderSnippet(snippet *html.Node, id int, title string,){
+    
+    // Define some rules to generate more readable output
     links := md.Rule {
         Filter: []string{"a"},
         Replacement: func(content string, selec *goquery.Selection, opt *md.Options) *string {
@@ -104,22 +119,27 @@ func printSnippet(id int, title string, link string){
         },
     }
     
+    // Call html-to-markdown
+    var h bytes.Buffer
+    html.Render(&h, snippet)
+    converter := md.NewConverter("", true, nil)
+    converter.Use(plugin.GitHubFlavored())
     
+    // Add the rules
+    converter.AddRules(links)
+    converter.AddRules(images)
     
-    _, ok := entry["body"]; if ok {
-        var h bytes.Buffer
-        html.Render(&h, entry["body"])
-        converter := md.NewConverter("", true, nil)
-        converter.Use(plugin.GitHubFlavored())
-        converter.AddRules(links)
-        converter.AddRules(images)
-        markdown, _ := converter.ConvertString(h.String())
-        fmt.Println(markdown)
-        
-    }
-
+    // Render
+    markdown, _ := converter.ConvertString(h.String())
+    
+    // Print
+    fmt.Println(fmt.Sprintf("%d: %s\n", id, title))
+    fmt.Println(markdown)
 }
 
+/** Output a tabulated set of results
+ * 
+ */
 func printTable(res []searchResult, s search) {
     
     t := table.NewWriter()
@@ -132,7 +152,6 @@ func printTable(res []searchResult, s search) {
     }
     t.Render()
 }
-
 
 /** Iterate through the feed and apply the desired search term
  * 
@@ -153,14 +172,7 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
         idMatchMode = true
     }
     
-    for _, item := range feed.Items{
-        // fmt.Println(item.Title)
-        // fmt.Println(item.Link)
-        //fmt.Println(item.Description)
-        //for _, cat := range item.Categories{
-        //    fmt.Println(cat)
-        //}
-        
+    for _, item := range feed.Items{        
         var matched bool
         var res searchResult
         res.id = id
@@ -188,9 +200,9 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
             }
         }else{
             if id == searchID {
-                // TODO - print the snippet
-                fmt.Println("%i matches", id)
+                // print the snippet
                 printSnippet(id, item.Title, item.Link)
+                return results
             }
         }
     
@@ -200,9 +212,11 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
 }
 
 func main() {
-    
-    feed, _ := fetchFeed()
-    fmt.Println(feed.Title)
+    // Fetch the feed
+    feed, err := fetchFeed(); if err != nil {
+        log.Fatal(err)
+    }
+    //fmt.Println(feed.Title)
     
     var search search
     search.term = "10"
@@ -210,5 +224,7 @@ func main() {
     results := searchFeed(feed, search)
     
     // Render the results
-    printTable(results, search)
+    if len(results) > 0 {
+        printTable(results, search)
+    }
 }
