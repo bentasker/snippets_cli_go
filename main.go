@@ -11,8 +11,10 @@ import (
     
     "github.com/jedib0t/go-pretty/v6/table"
     "github.com/mmcdole/gofeed"
+    "github.com/PuerkitoBio/goquery"
     "golang.org/x/net/html"
     md "github.com/JohannesKaufmann/html-to-markdown"
+    "github.com/JohannesKaufmann/html-to-markdown/plugin"
 )
 
 type searchResult struct{
@@ -42,7 +44,7 @@ func printSnippet(id int, title string, link string){
     // Fetch the page
     fmt.Println(link)
     //resp, err := http.Get(link)
-    resp, err := http.Get("https://recipebook.bentasker.co.uk/posts/pork/bbq-pork-loin.html")
+    resp, err := http.Get("https://snippets.bentasker.co.uk/page-2409261238-List-Resource-Requests-and-Limits-for-Kubernetes-pods-Misc.html")
     if err != nil {
         log.Fatal(err)
     }
@@ -70,8 +72,8 @@ func printSnippet(id int, title string, link string){
             attrs := n.Attr
             for _, attr := range attrs {
                     // TODO: match on ID rather than class
-                    if attr.Key == "class" {
-                        if strings.Contains(attr.Val, "post-page"){
+                    if attr.Key == "id" {
+                        if strings.Contains(attr.Val, "pageContent"){
                             entry["body"] = n
                         }
                     }
@@ -85,10 +87,32 @@ func printSnippet(id int, title string, link string){
     }    
         
     f(doc)
+    
+    // We don't want link targets to be included - we're looking to try and 
+    // make something for a user to read in a CLI
+    links := md.Rule {
+        Filter: []string{"a"},
+        Replacement: func(content string, selec *goquery.Selection, opt *md.Options) *string {
+            return md.String(content)
+        },
+    }
+    
+    images := md.Rule {
+        Filter: []string{"img"},
+        Replacement: func(content string, selec *goquery.Selection, opt *md.Options) *string {
+            return md.String("")
+        },
+    }
+    
+    
+    
     _, ok := entry["body"]; if ok {
         var h bytes.Buffer
         html.Render(&h, entry["body"])
         converter := md.NewConverter("", true, nil)
+        converter.Use(plugin.GitHubFlavored())
+        converter.AddRules(links)
+        converter.AddRules(images)
         markdown, _ := converter.ConvertString(h.String())
         fmt.Println(markdown)
         
