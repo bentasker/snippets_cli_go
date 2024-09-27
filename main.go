@@ -93,7 +93,7 @@ func printSnippet(id int, title string, link string){
     
     // Render
     _, ok := entry["body"]; if ok {
-        renderSnippet(entry["body"], id, title)
+        renderSnippet(entry["body"], id, title, link)
     }else{
         log.Fatal("Unable to retrieve snippet")
     }
@@ -102,7 +102,7 @@ func printSnippet(id int, title string, link string){
 /** Generate console output for a snippet
  * 
  */
-func renderSnippet(snippet *html.Node, id int, title string,){
+func renderSnippet(snippet *html.Node, id int, title string, link string){
     
     // Define some rules to generate more readable output
     links := md.Rule {
@@ -135,6 +135,9 @@ func renderSnippet(snippet *html.Node, id int, title string,){
     // Print
     fmt.Println(fmt.Sprintf("%d: %s\n", id, title))
     fmt.Println(markdown)
+    fmt.Println("\n### HTML Link\n")
+    fmt.Println(link)
+    fmt.Println("")
 }
 
 /** Output a tabulated set of results
