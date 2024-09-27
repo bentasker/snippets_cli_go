@@ -215,18 +215,27 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
 }
 
 func main() {
+    var search search
+    
+    if len(os.Args[1:]) < 1 {
+        log.Fatal("No search term")
+    }
+
+    // Take search terms from the command line
+    search.term = strings.Join(os.Args[1:], " ")
+    
     // Fetch the feed
     feed, err := fetchFeed(); if err != nil {
         log.Fatal(err)
     }
-    //fmt.Println(feed.Title)
     
-    var search search
-    search.term = "10"
-
+    // Run the search
+    // note: if an ID was provided this function
+    // will instead trigger printing of the 
+    // snippet
     results := searchFeed(feed, search)
     
-    // Render the results
+    // Render the results if any were returned
     if len(results) > 0 {
         printTable(results, search)
     }
