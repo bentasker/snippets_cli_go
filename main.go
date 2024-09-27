@@ -28,24 +28,49 @@ type search struct{
     term    string
 }
 
+type searchDestination struct{
+    rss         string
+    elemtype    string
+    attrib      string
+    elemid      string
+    specialtag  bool
+}
+
+var searchDestinations = map[string]searchDestination{
+    "btcli" : searchDestination{
+        rss : "https://www.bentasker.co.uk/rss.xml",
+        elemtype : "div",
+        attrib : "itemprop",
+        elemid : "articleBody text",
+        specialtag : false,
+    },
+    "rbt_cli" : searchDestination{
+        rss : "https://recipebook.bentasker.co.uk/rss.xml",
+        elemtype : "div",
+        attrib : "class",
+        elemid : "blog-post post-page",
+        specialtag : false,
+    },
+}
+
+
 /** Fetch and parse the RSS feed
  * 
  */
-func fetchFeed() (feed *gofeed.Feed, err error){
+func fetchFeed(cfg searchDestination) (feed *gofeed.Feed, err error){
     // TODO: caching
     fp := gofeed.NewParser()
     fp.UserAgent = "snippets_cli_go"
-    return fp.ParseURL("https://www.bentasker.co.uk/rss.xml")
+    return fp.ParseURL(cfg.rss)
 }
 
 /** Fetch a snippet and process it into something which can be
  * output to console
  * 
  */
-func printSnippet(id int, title string, link string){
+func printSnippet(id int, title string, link string, cfg searchDestination){
     // Fetch the page
-    //resp, err := http.Get(link)
-    resp, err := http.Get("https://snippets.bentasker.co.uk/page-2409261238-List-Resource-Requests-and-Limits-for-Kubernetes-pods-Misc.html")
+    resp, err := http.Get(link)
     if err != nil {
         log.Fatal(err)
     }
@@ -70,12 +95,12 @@ func printSnippet(id int, title string, link string){
     var f func(*html.Node)
     f = func(n *html.Node){
         // Check whether it's a div
-        if n.Type == html.ElementNode && n.Data == "div" {
+        if n.Type == html.ElementNode && n.Data == cfg.elemtype {
             attrs := n.Attr
             for _, attr := range attrs {
                     // TODO: match on ID rather than class
-                    if attr.Key == "id" {
-                        if strings.Contains(attr.Val, "pageContent"){
+                    if attr.Key == cfg.attrib {
+                        if attr.Val == cfg.elemid{
                             entry["body"] = n
                         }
                     }
@@ -159,7 +184,7 @@ func printTable(res []searchResult, s search) {
 /** Iterate through the feed and apply the desired search term
  * 
  */
-func searchFeed(feed *gofeed.Feed, search search) []searchResult{
+func searchFeed(feed *gofeed.Feed, search search, cfg searchDestination) []searchResult{
     var idMatchMode bool
     var searchID int
     var err error
@@ -204,7 +229,7 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
         }else{
             if id == searchID {
                 // print the snippet
-                printSnippet(id, item.Title, item.Link)
+                printSnippet(id, item.Title, item.Link, cfg)
                 return results
             }
         }
@@ -223,9 +248,19 @@ func main() {
 
     // Take search terms from the command line
     search.term = strings.Join(os.Args[1:], " ")
+
+    // Figure out which set of settings to use
+    var cfg searchDestination
+    cmd := os.Args[0]
+    
+    _, ok := searchDestinations[cmd]; if ok {
+        cfg = searchDestinations[cmd]
+    }else{
+        cfg = searchDestinations["rbt_cli"]
+    }
     
     // Fetch the feed
-    feed, err := fetchFeed(); if err != nil {
+    feed, err := fetchFeed(cfg); if err != nil {
         log.Fatal(err)
     }
     
@@ -233,7 +268,7 @@ func main() {
     // note: if an ID was provided this function
     // will instead trigger printing of the 
     // snippet
-    results := searchFeed(feed, search)
+    results := searchFeed(feed, search, cfg)
     
     // Render the results if any were returned
     if len(results) > 0 {
