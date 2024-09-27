@@ -62,7 +62,7 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
         var res searchResult
         res.id = 1 // TODO
         res.title = item.Title
-        res.language = "N/A"
+        res.language = "N/A" // TODO
 
         // Does the title match?
         if strings.Contains(strings.ToLower(item.Title), searchTerm) {
