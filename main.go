@@ -34,7 +34,6 @@ type searchDestination struct{
     elemtype    string
     attrib      string
     elemid      string
-    specialtag  bool
 }
 
 var searchDestinations = map[string]searchDestination{
@@ -43,14 +42,12 @@ var searchDestinations = map[string]searchDestination{
         elemtype : "div",
         attrib : "itemprop",
         elemid : "articleBody text",
-        specialtag : false,
     },
     "rbt_cli" : searchDestination{
         rss : "https://recipebook.bentasker.co.uk/rss.xml",
         elemtype : "div",
         attrib : "class",
         elemid : "blog-post post-page",
-        specialtag : false,
     },
 }
 
@@ -169,15 +166,16 @@ func renderSnippet(snippet *html.Node, id int, title string, link string){
 /** Output a tabulated set of results
  * 
  */
-func printTable(res []searchResult, s search) {
+func printTable(res []searchResult, s search, cfg searchDestination) {
     
     t := table.NewWriter()
     t.SetOutputMirror(os.Stdout)
     t.SetTitle(fmt.Sprintf("Search results: %s", s.term))
-    t.AppendHeader(table.Row{"#", "Title", "Language"})
+    t.AppendHeader(table.Row{"#", "Title"})
+
     
     for _, r := range res{
-        t.AppendRow([]interface{}{r.id, r.title, r.language})
+        t.AppendRow([]interface{}{r.id, r.title})
     }
     t.Render()
 }
@@ -281,6 +279,6 @@ func main() {
     
     // Render the results if any were returned
     if len(results) > 0 {
-        printTable(results, search)
+        printTable(results, search, cfg)
     }
 }
