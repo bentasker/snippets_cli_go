@@ -19,9 +19,10 @@ import (
 
 type searchResult struct{
     id          int
-    title       string
     language    string // TODO - don't know if we'll be able to reliably populate this
-    matchtype   string
+    link        string
+    matchtype   string    
+    title       string
 }
 
 type search struct{
@@ -206,6 +207,7 @@ func searchFeed(feed *gofeed.Feed, search search, cfg searchDestination) []searc
         res.id = id
         res.title = item.Title
         res.language = "N/A" // TODO
+        res.link = item.Link
 
         if !idMatchMode {
             // Does the title match?
@@ -230,12 +232,19 @@ func searchFeed(feed *gofeed.Feed, search search, cfg searchDestination) []searc
             if id == searchID {
                 // print the snippet
                 printSnippet(id, item.Title, item.Link, cfg)
-                return results
+                return []searchResult{}
             }
         }
     
         id -= 1
     }
+    
+    if len(results) == 1 {
+        r := results[0]
+        printSnippet(r.id, r.title, r.link, cfg)
+        return []searchResult{}
+    }
+    
     return results
 }
 
