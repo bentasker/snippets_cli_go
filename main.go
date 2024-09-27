@@ -50,6 +50,10 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
     
     searchTerm := strings.ToLower(search.term)
     
+    // IDs decrement as we iterate through, so get the number
+    // of items
+    id := feed.Len()
+    
     for _, item := range feed.Items{
         // fmt.Println(item.Title)
         // fmt.Println(item.Link)
@@ -60,7 +64,7 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
         
         var matched bool
         var res searchResult
-        res.id = 1 // TODO
+        res.id = id
         res.title = item.Title
         res.language = "N/A" // TODO
 
@@ -81,7 +85,9 @@ func searchFeed(feed *gofeed.Feed, search search) []searchResult{
         
         if matched {
             results = append(results, res)            
-        }        
+        }
+        
+        id -= 1
     }
     return results
 }
