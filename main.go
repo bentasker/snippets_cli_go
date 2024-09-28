@@ -36,7 +36,16 @@ type searchDestination struct{
     elemid      string
 }
 
+var defaultDest = searchDestination{
+        rss : "http://scratch.holly.home/output/rss.xml",
+        elemtype : "div",
+        attrib : "itemprop",
+        elemid : "articleBody text",
+    }
+
 var searchDestinations = map[string]searchDestination{
+    "snippets_cli" : defaultDest,
+    "sbt_cli" : defaultDest,
     "btcli" : searchDestination{
         rss : "https://www.bentasker.co.uk/rss.xml",
         elemtype : "div",
@@ -263,7 +272,7 @@ func main() {
     _, ok := searchDestinations[cmd]; if ok {
         cfg = searchDestinations[cmd]
     }else{
-        cfg = searchDestinations["rbt_cli"]
+        cfg = defaultDest
     }
     
     // Fetch the feed
