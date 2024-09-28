@@ -1,5 +1,5 @@
 build:
-	go build .
+	go build -ldflags "-w -s" .
 
 install: build
 	cp snippets_cli /usr/local/bin
