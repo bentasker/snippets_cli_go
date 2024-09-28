@@ -6,6 +6,7 @@ import (
     "log"
     "net/http"
     "os"
+    "regexp"
     "strconv"
     "strings"
     
@@ -34,6 +35,8 @@ type searchDestination struct{
     elemtype    string
     attrib      string
     elemid      string
+    parseTitle  bool
+    extraCol    string
 }
 
 var defaultDest = searchDestination{
@@ -41,6 +44,8 @@ var defaultDest = searchDestination{
         elemtype : "div",
         attrib : "itemprop",
         elemid : "articleBody text",
+        parseTitle : true,
+        extraCol : "Language",
     }
 
 var searchDestinations = map[string]searchDestination{
@@ -51,12 +56,14 @@ var searchDestinations = map[string]searchDestination{
         elemtype : "div",
         attrib : "itemprop",
         elemid : "articleBody text",
+        parseTitle : false,
     },
     "rbt_cli" : searchDestination{
         rss : "https://recipebook.bentasker.co.uk/rss.xml",
         elemtype : "div",
         attrib : "class",
         elemid : "blog-post post-page",
+        parseTitle : false,
     },
 }
 
@@ -180,11 +187,32 @@ func printTable(res []searchResult, s search, cfg searchDestination) {
     t := table.NewWriter()
     t.SetOutputMirror(os.Stdout)
     t.SetTitle(fmt.Sprintf("Search results: %s", s.term))
-    t.AppendHeader(table.Row{"#", "Title"})
+    
+    h := table.Row{"#", "Title"}
+    
+    if cfg.parseTitle {
+        h = table.Row{"#", "Title", cfg.extraCol}
+    }
+    t.AppendHeader(h)
 
     
     for _, r := range res{
-        t.AppendRow([]interface{}{r.id, r.title})
+        
+        if strings.HasSuffix(r.title,")"){
+            re := regexp.MustCompile(`\(([^\)]+)\)$`)
+            subMatch := re.FindStringSubmatch(r.title)
+            
+            if len(subMatch) > 1 {
+                r.language = subMatch[1]   
+            }
+        }
+        
+        row := []interface{}{r.id, r.title}
+        if cfg.parseTitle && len(r.language) > 0{
+            row = []interface{}{r.id, r.title, r.language}
+        }
+        
+        t.AppendRow(row)
     }
     t.Render()
 }
@@ -213,7 +241,7 @@ func searchFeed(feed *gofeed.Feed, search search, cfg searchDestination) []searc
         var res searchResult
         res.id = id
         res.title = item.Title
-        res.language = "N/A" // TODO
+        res.language = ""
         res.link = item.Link
 
         if !idMatchMode {
