@@ -40,10 +40,10 @@ type searchDestination struct{
 }
 
 var defaultDest = searchDestination{
-        rss : "http://scratch.holly.home/output/rss.xml",
-        elemtype : "div",
-        attrib : "itemprop",
-        elemid : "articleBody text",
+        rss : "https://snippets.bentasker.co.uk/rss.xml",
+        elemtype : "article",
+        attrib : "itemtype",
+        elemid : "http://schema.org/SoftwareSourceCode",
         parseTitle : true,
         extraCol : "Language",
     }
